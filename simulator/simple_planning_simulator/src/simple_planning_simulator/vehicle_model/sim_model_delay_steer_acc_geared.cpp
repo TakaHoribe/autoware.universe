@@ -69,6 +69,9 @@ void SimModelDelaySteerAccGeared::update(const float64_t & dt)
 
   // calc acc directly after gear consideration
   state_(IDX::ACCX) = (state_(IDX::VX) - prev_vx) / std::max(dt, 1.0e-5);
+
+  std::cerr << "after RK" << std::endl;
+  std::cerr << std::setprecision(10) << "state_ = \n" << state_ << std::endl;
 }
 
 void SimModelDelaySteerAccGeared::initializeInputQueue(const float64_t & dt)

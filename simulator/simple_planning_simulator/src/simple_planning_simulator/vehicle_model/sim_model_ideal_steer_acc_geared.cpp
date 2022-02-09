@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <iostream>
 
 #include "simple_planning_simulator/vehicle_model/sim_model_ideal_steer_acc_geared.hpp"
 #include "autoware_auto_vehicle_msgs/msg/gear_command.hpp"
@@ -40,6 +41,12 @@ void SimModelIdealSteerAccGeared::update(const float64_t & dt)
   state_(IDX::VX) = calcVelocityWithGear(state_, gear_);
 
   current_acc_ = (state_(IDX::VX) - prev_vx) / std::max(dt, 1.0e-5);
+
+  std::cerr << "after RK" << std::endl;
+  std::cerr << std::setprecision(10) << "state_ = \n" << state_ << std::endl;
+  std::cerr << std::setprecision(10) << "current_acc_ = " << current_acc_ << std::endl;
+
+
 }
 
 Eigen::VectorXd SimModelIdealSteerAccGeared::calcModel(

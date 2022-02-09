@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "simple_planning_simulator/vehicle_model/sim_model_interface.hpp"
+#include <iostream>
 
 SimModelInterface::SimModelInterface(int dim_x, int dim_u)
 : dim_x_(dim_x), dim_u_(dim_u)
@@ -28,7 +29,16 @@ void SimModelInterface::updateRungeKutta(const float64_t & dt, const Eigen::Vect
   Eigen::VectorXd k3 = calcModel(state_ + k2 * 0.5 * dt, input);
   Eigen::VectorXd k4 = calcModel(state_ + k3 * dt, input);
 
+
+  std::cerr << std::setprecision(10) << "\n update Runge Kutta"<< std::endl;
+  std::cerr << std::setprecision(10) << "before state_ = \n" << state_ << std::endl;
+
   state_ += 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4) * dt;
+
+  std::cerr << std::setprecision(10) << "after state_ = \n" << state_ << std::endl;
+  std::cerr << std::setprecision(10) << "input = \n" << input << std::endl;
+  std::cerr << std::setprecision(10) << "dt = " << dt << std::endl;
+
 }
 void SimModelInterface::updateEuler(const float64_t & dt, const Eigen::VectorXd & input)
 {
