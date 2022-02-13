@@ -14,16 +14,39 @@
 
 #include <tuple>
 #include <vector>
+#include <iostream>
 
 #include "eigen3/Eigen/Core"
 #include "gtest/gtest.h"
 #include "osqp_interface/osqp_interface.hpp"
 
+#define PRINT_VEC(v)           \
+  {                            \
+    std::cerr << #v << ":\n";  \
+    for (const auto & p : v) { \
+      std::cerr << p << ", ";  \
+    }                          \
+    std::cerr << "\n";         \
+  }
 
 namespace
 {
 using autoware::common::osqp::float64_t;
-/// Problem taken from https://github.com/osqp/osqp/blob/master/tests/basic_qp/generate_problem.py
+// Problem taken from https://github.com/osqp/osqp/blob/master/tests/basic_qp/generate_problem.py
+//
+// min  1/2 * x' * P * x  + q' * x
+// s.t. lb <= A * x <= ub
+//
+// P = [4, 1], q = [1, 1], A = [1, 1], lb = [   1], ub = [1.0]
+//     [1, 2]                  [1, 0]       [   0]       [0.7]
+//                             [0, 1]       [   0]       [0.7]
+//                             [0, 1]       [-inf]       [inf]
+//
+// The optimal solution is
+// x = [0.3, 0.7]'
+// y = [-2.9, 0.0, 0.2, 0.0]`
+// obj = 1.88
+
 // cppcheck-suppress syntaxError
 TEST(TestOsqpInterface, BasicQp) {
   using autoware::common::osqp::CSC_Matrix;
@@ -35,11 +58,15 @@ TEST(TestOsqpInterface, BasicQp) {
       EXPECT_EQ(std::get<2>(result), 1);
       EXPECT_EQ(std::get<3>(result), 1);
       ASSERT_EQ(std::get<0>(result).size(), size_t(2));
-      ASSERT_EQ(std::get<1>(result).size(), size_t(2));
-      EXPECT_DOUBLE_EQ(std::get<0>(result)[0], 0.3);
-      EXPECT_DOUBLE_EQ(std::get<0>(result)[1], 0.7);
-      EXPECT_DOUBLE_EQ(std::get<1>(result)[0], -2.9);
-      EXPECT_NEAR(std::get<1>(result)[1], 0.0, 1e-6);
+      ASSERT_EQ(std::get<1>(result).size(), size_t(4));
+      const auto prime_sol = std::get<0>(result);
+      const auto dual_sol = std::get<1>(result);
+      EXPECT_DOUBLE_EQ(prime_sol[0], 0.3);
+      EXPECT_DOUBLE_EQ(prime_sol[1], 0.7);
+      EXPECT_DOUBLE_EQ(dual_sol[0], -2.9);
+      EXPECT_NEAR(dual_sol[1], 0.0, 1e-6);
+      EXPECT_DOUBLE_EQ(dual_sol[2], 0.2);
+      EXPECT_NEAR(dual_sol[3], 0.0, 1e-6);
     };
 
   {
@@ -54,7 +81,21 @@ TEST(TestOsqpInterface, BasicQp) {
     std::vector<float64_t> u = {1.0, 0.7, 0.7, autoware::common::osqp::INF};
     std::tuple<std::vector<float64_t>, std::vector<float64_t>, int, int, int> result = osqp.optimize(
       P, A, q, l, u);
+
+    const auto prime = std::get<0>(result);
+    const auto dual = std::get<1>(result);
+
+    std::cerr << "A:\n" << A << std::endl;
+    std::cerr << "P:\n" << P << std::endl;
+    PRINT_VEC(prime);
+    PRINT_VEC(dual);
+
     check_result(result);
+
+
+
+
+
   }
   {
     // Define problem during initialization
