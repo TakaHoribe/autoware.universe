@@ -14,6 +14,10 @@ find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 find_package(OpenCV REQUIRED)
 
+# ament_auto_add_executable(aaaa
+#   src/main.cpp
+# )
+
 ament_auto_add_library(behavior_path_planner_node SHARED
   src/behavior_path_planner_node.cpp
   src/behavior_tree_manager.cpp

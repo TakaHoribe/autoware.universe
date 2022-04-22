@@ -47,6 +47,9 @@ BehaviorPathPlannerNode::BehaviorPathPlannerNode(const rclcpp::NodeOptions & nod
     planner_data_->parameters = getCommonParam();
   }
 
+  int a;
+  printf("%d", a);
+
   velocity_subscriber_ = create_subscription<Odometry>(
     "~/input/odometry", 1, std::bind(&BehaviorPathPlannerNode::onVelocity, this, _1));
   perception_subscriber_ = create_subscription<PredictedObjects>(
@@ -484,6 +487,8 @@ void BehaviorPathPlannerNode::run()
   if (current_scenario_->current_scenario != Scenario::LANEDRIVING) {
     return;
   }
+
+
 
   // update planner data
   updateCurrentPose();
