@@ -1,8 +1,30 @@
 # map_based_prediction
 
-## Role
+## Purpose
 
-`map_based_prediction` is a module to predict the future paths of other vehicles and pedestrians according to the shape of the map and the surrounding environment.
+`map_based_prediction` is a module to predict the future paths of other vehicles and pedestrians according to the shape of the map and the surrounding environment. It also calculates probability of the candidate paths.
+
+## Assumptions
+- 対象となる障害物(車や人)の以下の情報がわかっていること
+   - カテゴリ(人や車などの種類)
+   - 障害部の(重心)位置とその位置にいる時間
+   - 物体の位置がmap座標(他の座標系情報しかないときはmap座標への変換式)
+- 周辺環境について以下の情報がわかっていること
+   - laneletの地図情報
+
+
+## Known Limits
+- 障害物が乗用車、バス、トラックの時
+   - 基本的に地図の形状に沿った予測経路を出力
+   - 障害物の向きがlaneletの上にいてもそのlaneletとの向きの差が大きいときは地図情報は見ずに予測経路をだす(今回は直線経路)
+   - 障害物がどのlaneletにもいないときは地図情報を見ずに予測経路を出す(今回は直線予測)
+   - 引かれている経路がは車両のダイナミクスを無視したものを引く可能性がある
+- 障害物が人やバイクの時
+   - すべての状況において地図情報を見ずに予測経路を出す(今回は直線予測)
+- すべての障害物に対して
+   - 予測経路はT[s]だけ出てきてなおかつdt[s]分の間隔で出てくる(つまりpredicted pathのサイズNはN=T/dt)
+   - Tとdtはパラメータとしてユーザーが決められる
+   - 障害物から加速度情報を取ってこれていないので縦方向は等速直線運動を仮定した予測になっている
 
 ## Inner-workings / Algorithms
 
@@ -64,10 +86,6 @@
 | `dist_ratio_threshold_to_right_bound`       | double | Conditions for using lane change detection of objects. Distance to the right bound of lanelet.               |
 | `diff_dist_threshold_to_left_bound`         | double | Conditions for using lane change detection of objects. Differential value of horizontal position of objects. |
 | `diff_dist_threshold_to_right_bound`        | double | Conditions for using lane change detection of objects. Differential value of horizontal position of objects. |
-
-## Assumptions / Known limits
-
-`map_based_prediction` can only predict future trajectories for cars, tracks and buses.
 
 ## Reference
 
