@@ -5,52 +5,73 @@
 `map_based_prediction` is a module to predict the future paths of other vehicles and pedestrians according to the shape of the map and the surrounding environment. It also calculates probability of the candidate paths.
 
 ## Assumptions
-- 対象となる障害物(車や人)の以下の情報がわかっていること
-   - カテゴリ(人や車などの種類)
-   - 障害部の(重心)位置とその位置にいる時間
-   - 物体の位置がmap座標(他の座標系情報しかないときはmap座標への変換式)
-- 周辺環境について以下の情報がわかっていること
-   - laneletの地図情報
 
+- 対象となる障害物(車や人)の以下の情報がわかっていること
+  - カテゴリ(人や車などの種類)
+  - 障害部の(重心)位置とその位置にいる時間
+  - 物体の位置が map 座標(他の座標系情報しかないときは map 座標への変換式)
+- 周辺環境について以下の情報がわかっていること
+  - lanelet の地図情報
 
 ## Known Limits
+
 - 障害物が乗用車、バス、トラックの時
-   - 基本的に地図の形状に沿った予測経路を出力
-   - 障害物の向きがlaneletの上にいてもそのlaneletとの向きの差が大きいときは地図情報は見ずに予測経路をだす(今回は直線経路)
-   - 障害物がどのlaneletにもいないときは地図情報を見ずに予測経路を出す(今回は直線予測)
-   - 引かれている経路がは車両のダイナミクスを無視したものを引く可能性がある
+  - 基本的に地図の形状に沿った予測経路を出力
+  - 障害物の向きが lanelet の上にいてもその lanelet との向きの差が大きいときは地図情報は見ずに予測経路をだす(今回は直線経路)
+  - 障害物がどの lanelet にもいないときは地図情報を見ずに予測経路を出す(今回は直線予測)
+  - 引かれている経路がは車両のダイナミクスを無視したものを引く可能性がある
 - 障害物が人やバイクの時
-   - すべての状況において地図情報を見ずに予測経路を出す(今回は直線予測)
+  - すべての状況において地図情報を見ずに予測経路を出す(今回は直線予測)
 - すべての障害物に対して
-   - 予測経路はT[s]だけ出てきてなおかつdt[s]分の間隔で出てくる(つまりpredicted pathのサイズNはN=T/dt)
-   - Tとdtはパラメータとしてユーザーが決められる
-   - 障害物から加速度情報を取ってこれていないので縦方向は等速直線運動を仮定した予測になっている
+  - 予測経路は T[s]だけ出てきてなおかつ dt[s]分の間隔で出てくる(つまり predicted path のサイズ N は N=T/dt)
+  - T と dt はパラメータとしてユーザーが決められる
+  - 障害物から加速度情報を取ってこれていないので縦方向は等速直線運動を仮定した予測になっている
 
 ## Inner-workings / Algorithms
 
-1. Get lanelet path
-   The first step is to get the lanelet of the current position of the car. After that, we obtain several trajectories based on the map.
+### Flow Chart
 
-2. Lane Change Detection
-   After finding the current lanelet from the current position of the obstacle, our algorithm try to detect the lane change maneuver from the past positions of the obstacle. Our method uses the deviation between the obstacle's current position and its position one second ago and current position to determine if it is about to change lanes. The parameters used for the lane change decision are obtained by analyzing the data obtained from the experiment. We already confirmed that these parameters give the least number of false positives.
+![map based prediction flow](./media/map_based_prediction_flow.drawio.svg)
 
-3. Confidence calculation
-   We use the following metric to compute the distance to a certain lane.
+1. Remove Old Object History
 
-   ```txt
-   d = x^T P x
-   ```
+   現在の時刻(current_time)と Object History の中にある各 Object の時刻を比較して古いものは削除していく
 
-   where `x=[lateral_dist, yaw_diff]` and `P` are covariance matrices. Therefore confidence values can be computed as
+2. Get Current lanelet
 
-   ```txt
-   confidence = 1/d
-   ```
+   障害物の現在の重心位置に対応する lanelet を一つまたは複数とってくる。なお、とってくる lanelet は以下の条件を満たしている必要がある。
 
-   Finally, we normalize the confidence value to make it as probability value. Note that the standard deviation of the lateral distance and yaw difference is given by the user.
+   - 障害物の重心点が必ずその lanelet 内に入っていること
+   - lanelet の中心線を構成する点が 2 つ以上あること
+   - lanelet と車の向きの角度差がパラメータによって与えられる閾値内であること。ただし、detection で角度が 180 度反転している可能性もあるので、それは許す。(diff_yaw < threshold or diff_yaw > pi - threshold)
+   - 過去の history で記録した lanelet の位置から到達可能な lanelet にいること
 
-4. Drawing predicted trajectories
-   From the current position and reference trajectories that we get in the step1, we create predicted trajectories by using Quintic polynomial. Note that, since this algorithm consider lateral and longitudinal motions separately, it sometimes generates dynamically-infeasible trajectories when the vehicle travels at a low speed. To deal with this problem, we only make straight line predictions when the vehicle speed is lower than a certain value (which is given as a parameter).
+3. Update Object History
+
+   現在いる lanelet を object history の中に入れる。なお、新しい障害物である場合は、新しく object history にその障害物を登録する。
+
+4. Get Predicted Reference Path
+
+   1. Get Reference Path
+
+      該当 object がいる今の lanelet からこの object が沿う reference path を作る
+
+   2. Predict Object Maneuver
+
+      object の maneuver を予想する。現在の実装だと`Lane Follow`, `Left Lane Change`, `Right Lane Chagne`のそれぞれの maneuver に過去の history 情報と 1 で求めた reference path を用いて確率が振り分けられる。なお、maneuver の判定方法は以下の情報を用いて決める。
+
+      - object の現在の重心位置とレーンの左右の境界線までの距離
+      - t 秒前の横偏差と今の時刻の横偏差の変化率
+
+      なお、このときのパラメータは実験時に柏の葉で取ってきた実車データから解析して決めたものであり、一番誤判定が少なくなるようなパラメータとなっている。
+
+   3. Calculate Object Probability
+
+      2 で求めた objectn の maneuver 確率をさらに現在 object のいる位置や角度から再計算する。ここで現在の object の姿勢や位置を考慮した maneuver の確率を求めることができる。
+
+5. Generate predicted trajectories
+
+   4 でもとめた参照経路に対してジャーク最小となる予測経路を引く。なお、縦方向は 4 次のスプラインを使用し、横方向は 5 次のスプラインを使って経路を引く。
 
 ## Inputs / Outputs
 
