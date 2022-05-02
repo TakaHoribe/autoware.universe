@@ -63,11 +63,17 @@
       - object の現在の重心位置とレーンの左右の境界線までの距離
       - t 秒前の横偏差と今の時刻の横偏差の変化率
 
-      Left Lane Change
+      これらを用いたレーンチェンジ検出は以下の用になる
+
+      Left Lane Change Detection
 
       if(d_current, left/d_lane > dl_ratio_threshold && (d_current, left - d_previous, left) > ddl_threshold)
 
-      なお、このときのパラメータは実験時に柏の葉で取ってきた実車データから解析して決めたものであり、一番誤判定が少なくなるようなパラメータとなっている。
+      Right Lane Change Detection
+
+      if(d_current, right/d_lane < dr_ratio_threshold && (d_current, right - d_previous, right) < ddr_threshold)
+
+      なお、ハイパラメータは実験時に柏の葉で取ってきた実車データから解析して決めたものであり、一番誤判定が少なくなるようなパラメータとなっている。
       ![lane change detection](./media/lane_change_detection.drawio.svg)
 
    3. Calculate Object Probability
