@@ -35,7 +35,11 @@
 
 1. Remove Old Object History
 
-   現在の時刻(current_time)と Object History の中にある各 Object の時刻を比較して古いものは削除していく
+   現在の時刻(current_time)と Object History の中にある各 Object の時刻を比較して古いものは削除していく。なお、object history のデータ構造は以下のような map 構造となっている。
+
+   ![object history](./media/object_history.drawio.svg)
+
+   Object Data の中にはその object の位置と速度、そしてその時の時刻情報が入っている。
 
 2. Get Current lanelet
 
@@ -73,7 +77,7 @@
 
       if(d_current, right/d_lane < dr_ratio_threshold && (d_current, right - d_previous, right) < ddr_threshold)
 
-      なお、ハイパラメータは実験時に柏の葉で取ってきた実車データから解析して決めたものであり、一番誤判定が少なくなるようなパラメータとなっている。
+      今回のハイパーパラメータは柏の葉ので取ってきたデータを用いて決めたものである。直線走行とカットイン走行をそれぞれ 20 本ずつ行い、そのデータ内で直線走行をカットインと誤判定しないような値にしている。そのため、今回デフォルトのパラメータは幾分保守的なものになっている。もっと判定条件を緩めることもできるが、そうすると直線走行しているときの車をレーンチェンジしていると誤判定することもでてくる。逆にもっと厳しくすると、本当にレーンチェンジしてくるときにレーンチェンジしていると判定できなくなる。
       ![lane change detection](./media/lane_change_detection.drawio.svg)
 
    3. Calculate Object Probability
