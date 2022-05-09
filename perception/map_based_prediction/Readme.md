@@ -35,6 +35,8 @@
 
 1. Remove Old Object History
 
+   車両の走行ルート判定や車線変更判定のためにobjectの時系列データをstoreする。
+
    現在の時刻(current_time)と Object History の中にある各 Object の時刻を比較して古いものは削除していく。なお、object history のデータ構造は以下のような map 構造となっている。
 
    ![object history](./media/object_history.drawio.svg)
@@ -71,11 +73,15 @@
 
       Left Lane Change Detection
 
+      ```
       if(d_current, left/d_lane > dl_ratio_threshold && (d_current, left - d_previous, left) > ddl_threshold)
+      ```
 
       Right Lane Change Detection
 
+      ```
       if(d_current, right/d_lane < dr_ratio_threshold && (d_current, right - d_previous, right) < ddr_threshold)
+      ```
 
       各文字の意味は以下の図に記しているとおりである。
 
