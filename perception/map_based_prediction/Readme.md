@@ -100,6 +100,30 @@
 
    4 でもとめた参照経路に対してジャーク最小となる予測経路を引く。なお、縦方向は 4 次のスプラインを使用し、横方向は 5 次のスプラインを使って経路を引く。
 
+
+### Lane Change Detection Logic
+
+カットイン走行をそれぞれ 15 本ずつ行い、他車（の中心）が自車レーンに進入する1秒前に車線変更を検知可能なパラメータとした。
+
+直線走行と
+
+そのデータ内で直線走行をカットインと誤判定しないような値にしている。
+
+
+そのため、今回デフォルトのパラメータは幾分保守的なものになっている。もっと判定条件を緩めることもできるが、そうすると直線走行しているときの車をレーンチェンジしていると誤判定することもでてくる。逆にもっと厳しくすると、本当にレーンチェンジしてくるときにレーンチェンジしていると判定できなくなる。今回の実験で得られたデータを以下に描画する。
+
+![right change data](./media/right_lane_change.png)
+<!-- ![left change data](./media/left_lane_change.png) -->
+
+
+
+
+Limitations:
+
+- 今回のパラメータは柏の葉ので取ってきたデータを用いて決めたものである。
+- 車線幅に対する一般化がされておらず、車線幅によってパラメータを変える必要がある。
+
+
 ## Inputs / Outputs
 
 ### Input
@@ -134,6 +158,8 @@
 | `dist_ratio_threshold_to_right_bound`       | double | Conditions for using lane change detection of objects. Distance to the right bound of lanelet.               |
 | `diff_dist_threshold_to_left_bound`         | double | Conditions for using lane change detection of objects. Differential value of horizontal position of objects. |
 | `diff_dist_threshold_to_right_bound`        | double | Conditions for using lane change detection of objects. Differential value of horizontal position of objects. |
+
+
 
 ## Reference
 
