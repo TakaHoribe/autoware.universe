@@ -61,7 +61,7 @@ public:
     const double delta_yaw_threshold) const = 0;
 
   virtual boost::optional<TrajectoryPoints> applyLateralAccelerationFilter(
-    const TrajectoryPoints & input, [[maybe_unused]] const double v0 = 0.0,
+    std::vector<double> & ks, const TrajectoryPoints & input, [[maybe_unused]] const double v0 = 0.0,
     [[maybe_unused]] const double a0 = 0.0,
     [[maybe_unused]] const bool enable_smooth_limit = false) const;
 

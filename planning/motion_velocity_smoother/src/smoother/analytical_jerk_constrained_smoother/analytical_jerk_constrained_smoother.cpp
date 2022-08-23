@@ -277,9 +277,10 @@ boost::optional<TrajectoryPoints> AnalyticalJerkConstrainedSmoother::resampleTra
 }
 
 boost::optional<TrajectoryPoints> AnalyticalJerkConstrainedSmoother::applyLateralAccelerationFilter(
-  const TrajectoryPoints & input, [[maybe_unused]] const double v0,
+  std::vector<double> & ks, const TrajectoryPoints & input, [[maybe_unused]] const double v0,
   [[maybe_unused]] const double a0, [[maybe_unused]] const bool enable_smooth_limit) const
 {
+  (void)ks;
   if (input.empty()) {
     return boost::none;
   }

@@ -71,6 +71,7 @@ public:
   explicit MotionVelocitySmootherNode(const rclcpp::NodeOptions & node_options);
 
 private:
+  mutable rclcpp::Publisher<tier4_debug_msgs::msg::Float32Stamped>::SharedPtr pub;
   rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_;
   rclcpp::Publisher<StopSpeedExceeded>::SharedPtr pub_over_stop_velocity_;
   rclcpp::Subscription<Odometry>::SharedPtr sub_current_odometry_;

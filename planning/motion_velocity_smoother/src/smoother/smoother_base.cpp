@@ -61,7 +61,7 @@ double SmootherBase::getMaxJerk() const { return base_param_.max_jerk; }
 double SmootherBase::getMinJerk() const { return base_param_.min_jerk; }
 
 boost::optional<TrajectoryPoints> SmootherBase::applyLateralAccelerationFilter(
-  const TrajectoryPoints & input, [[maybe_unused]] const double v0,
+  std::vector<double> & ks, const TrajectoryPoints & input, [[maybe_unused]] const double v0,
   [[maybe_unused]] const double a0, [[maybe_unused]] const bool enable_smooth_limit) const
 {
   if (input.empty()) {
@@ -90,6 +90,7 @@ boost::optional<TrajectoryPoints> SmootherBase::applyLateralAccelerationFilter(
 
   // Calculate curvature assuming the trajectory points interval is constant
   const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(output, idx_dist);
+  ks = curvature_v;
 
   //  Decrease speed according to lateral G
   const size_t before_decel_index =

@@ -74,6 +74,7 @@ MotionVelocitySmootherNode::MotionVelocitySmootherNode(const rclcpp::NodeOptions
   }
 
   // publishers, subscribers
+  pub = create_publisher<tier4_debug_msgs::msg::Float32Stamped>("~/curvature", 1);
   pub_trajectory_ = create_publisher<Trajectory>("~/output/trajectory", 1);
   pub_velocity_limit_ = create_publisher<VelocityLimit>(
     "~/output/current_velocity_limit_mps", rclcpp::QoS{1}.transient_local());
@@ -491,11 +492,17 @@ bool MotionVelocitySmootherNode::smoothVelocity(
   const auto [initial_motion, type] = calcInitialMotion(input, input_closest, prev_output_);
 
   // Lateral acceleration limit
+  std::vector<double> ks;
   const auto traj_lateral_acc_filtered =
-    smoother_->applyLateralAccelerationFilter(input, initial_motion.vel, initial_motion.acc, true);
+    smoother_->applyLateralAccelerationFilter(ks, input, initial_motion.vel, initial_motion.acc, true);
   if (!traj_lateral_acc_filtered) {
     return false;
   }
+  const auto ks_closest = findNearestIndexFromEgo(*traj_lateral_acc_filtered);
+  tier4_debug_msgs::msg::Float32Stamped tmp;
+  tmp.data = ks.at(*ks_closest);
+  pub->publish(tmp);
+
 
   // Resample trajectory with ego-velocity based interval distance
   auto traj_resampled = smoother_->resampleTrajectory(
