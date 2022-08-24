@@ -26,6 +26,7 @@
 #include <Eigen/Geometry>
 
 #include <autoware_auto_planning_msgs/msg/path.hpp>
+#include <autoware_auto_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_auto_planning_msgs/msg/trajectory.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -112,6 +113,59 @@ template <>
 inline geometry_msgs::msg::Pose getPose(const autoware_auto_planning_msgs::msg::TrajectoryPoint & p)
 {
   return p.pose;
+}
+
+
+template <class T>
+double getLongitudinalVelocity([[maybe_unused]] const T & p)
+{
+  static_assert(sizeof(T) == 0, "Only specializations of getVelocity can be used.");
+  throw std::logic_error("Only specializations of getVelocity can be used.");
+}
+
+template <>
+inline double getLongitudinalVelocity(const autoware_auto_planning_msgs::msg::PathPoint & p)
+{
+  return p.longitudinal_velocity_mps;
+}
+
+template <>
+inline double getLongitudinalVelocity(const autoware_auto_planning_msgs::msg::TrajectoryPoint & p)
+{
+  return p.longitudinal_velocity_mps;
+}
+
+template <class T>
+void setPose([[maybe_unused]] const geometry_msgs::msg::Pose & pose, [[maybe_unused]] T & p)
+{
+  static_assert(sizeof(T) == 0, "Only specializations of getPose can be used.");
+  throw std::logic_error("Only specializations of getPose can be used.");
+}
+
+template <>
+inline void setPose(const geometry_msgs::msg::Pose & pose, geometry_msgs::msg::Pose & p)
+{
+  p = pose;
+}
+
+template <>
+inline void setPose(const geometry_msgs::msg::Pose & pose, geometry_msgs::msg::PoseStamped & p)
+{
+  p.pose = pose;
+}
+
+template <>
+inline void setPose(
+  const geometry_msgs::msg::Pose & pose, autoware_auto_planning_msgs::msg::PathPoint & p)
+{
+  p.pose = pose;
+}
+
+template <>
+inline void setPose(
+  const geometry_msgs::msg::Pose & pose, autoware_auto_planning_msgs::msg::TrajectoryPoint & p)
+{
+  p.pose = pose;
 }
 
 inline geometry_msgs::msg::Point createPoint(const double x, const double y, const double z)
@@ -348,6 +402,33 @@ inline geometry_msgs::msg::Pose calcOffsetPose(
   tf2::toMsg(tf_pose * tf_offset, pose);
   return pose;
 }
+
+
+
+
+template <class T>
+void setLongitudinalVelocity([[maybe_unused]] const double velocity, [[maybe_unused]] T & p)
+{
+  static_assert(sizeof(T) == 0, "Only specializations of getLongitudinalVelocity can be used.");
+  throw std::logic_error("Only specializations of getLongitudinalVelocity can be used.");
+}
+
+template <>
+inline void setLongitudinalVelocity(
+  const double velocity, autoware_auto_planning_msgs::msg::TrajectoryPoint & p)
+{
+  p.longitudinal_velocity_mps = velocity;
+}
+
+template <>
+inline void setLongitudinalVelocity(
+  const double velocity, autoware_auto_planning_msgs::msg::PathPoint & p)
+{
+  p.longitudinal_velocity_mps = velocity;
+}
+
+
+
 }  // namespace tier4_autoware_utils
 
 #endif  // TIER4_AUTOWARE_UTILS__GEOMETRY__GEOMETRY_HPP_
