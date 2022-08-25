@@ -74,7 +74,7 @@ AutonomousMode::AutonomousMode(rclcpp::Node * node)
 void AutonomousMode::update(bool transition)
 {
   if (!transition) {
-    stable_start_time_.reset();
+    stable_start_time_.reset();  // この処理は毎回ではなく、最初に呼べばok
   }
 }
 

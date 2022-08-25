@@ -33,7 +33,7 @@ OperationModeTransitionManager::OperationModeTransitionManager(const rclcpp::Nod
   cli_control_mode_ = create_client<ControlModeRequest>("control_mode_request");
   pub_debug_info_ = create_publisher<ModeChangeBase::DebugInfo>("~/debug_info", 1);
 
-  // component interface
+  // component interface  adapiのinterfaceを生成するlib
   {
     const auto node = component_interface_utils::NodeAdaptor(this);
     node.init_srv(
@@ -65,22 +65,22 @@ OperationModeTransitionManager::OperationModeTransitionManager(const rclcpp::Nod
   modes_[OperationMode::REMOTE] = std::make_unique<RemoteMode>();
 }
 
-void OperationModeTransitionManager::onChangeAutowareControl(
+void OperationModeTransitionManager::onChangeAutowareControl(  // これはvehicle_engage=true/falseかどうか
   const ChangeAutowareControlAPI::Service::Request::SharedPtr request,
   const ChangeAutowareControlAPI::Service::Response::SharedPtr response)
 {
   if (request->autoware_control) {
     // Treat as a transition to the current operation mode.
-    changeOperationMode(std::nullopt);
+    changeOperationMode(std::nullopt);  // 前回の値をそのまま引き次き、control modeだけを変える（vehicle/engage）
   } else {
     // Allow mode transition to complete without canceling.
     transition_.reset();
-    changeControlMode(ControlModeRequestType::MANUAL);
+    changeControlMode(ControlModeRequestType::MANUAL); // disableならそのままmanualに変える
   }
   response->status.success = true;
 }
 
-void OperationModeTransitionManager::onChangeOperationMode(
+void OperationModeTransitionManager::onChangeOperationMode(  // これはautowareの中でstop/local/remote/autoを変える
   const ChangeOperationModeAPI::Service::Request::SharedPtr request,
   const ChangeOperationModeAPI::Service::Response::SharedPtr response)
 {
@@ -136,7 +136,7 @@ void OperationModeTransitionManager::changeOperationMode(std::optional<Operation
   // Enter transition mode if the vehicle is being or will be controlled by Autoware.
   if (current_control || request_control) {
     if (request_control) {
-      transition_ = std::make_unique<Transition>(now(), request_control, std::nullopt);
+      transition_ = std::make_unique<Transition>(now(), request_control, std::nullopt);  //  nulloptはmanual -> autowareの遷移という意味。キャンセルになった場合は前回のmode値ではなく、disengageになる。
     } else {
       transition_ = std::make_unique<Transition>(now(), request_control, current_mode_);
     }
@@ -198,7 +198,7 @@ void OperationModeTransitionManager::onTimer()
   }
 
   if (transition_) {
-    processTransition();
+    processTransition();  // transition中の処理は全モード同じ
   }
 
   publishData();
