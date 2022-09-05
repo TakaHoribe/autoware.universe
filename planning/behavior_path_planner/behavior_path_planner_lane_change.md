@@ -24,8 +24,9 @@ The preparation trajectory is the candidate path's first and the straight portio
 ```C++
 lane_change_prepare_distance = max(current_speed * lane_change_prepare_duration + 0.5 * deceleration * lane_change_prepare_duration^2, minimum_lane_change_prepare_distance)
 ```
+The `decerelation` is computed by the `multiple candidate path sampling` described below. (Right?)
 
-During the preparation phase, the turn signal will be activated when the remaining distance is equal to or less than `lane_change_search_distance`.
+During the preparation phase, the turn signal will be activated when the remaining distance to the start point of the lane-changing path is equal to or less than `lane_change_search_distance`.
 
 ### Lane-changing phase
 
@@ -59,7 +60,7 @@ Which path will be chosen will depend on validity and collision check.
 
 A candidate path is valid if the total lane change distance is less than
 
-1. distance to the end of current lane
+1. distance to the end of current lane (Is it prohibitted to execute the lane change over the next lane in longitudinal direction?)
 2. distance to the next intersection
 3. distance from current pose to the goal.
 4. distance to the crosswalk.
@@ -183,6 +184,9 @@ lateral distance > lateral_distance_threshold
 
 However, suppose the lateral distance is insufficient. In that case, longitudinal distance will be evaluated. The candidate path is safe only when the longitudinal gap between the ego vehicle and the dynamic object is wide enough.
 
+(This equation appears suddenly. What is the lateral distance? Confused. )
+Maybe it is more clear if you can explain like "there is enough distance in lateral or longitudinal direction".
+
 The following charts illustrate the flow of the safety checks
 
 ```plantuml
@@ -264,12 +268,17 @@ The following figure illustrates how the safety check is performed on ego vs. dy
 
 ![Safety check](./image/lane_change/lane_change-collision_check.png)
 
+(Typo? "Check is the polygon nearest pose satisfy safety constraint")
+And "the polygon nearest pose" is a little vague. Maybe you mean, check if the nearest neighbor of each polygon have enough distance, right?
+
 Let `v_front` and `a_front` be the front vehicle's velocity and deceleration, respectively, and `v_rear` and `a_rear` be the rear vehicle's velocity and deceleration, respectively.
 Front vehicle and rear vehicle assignment will depend on which predicted path's pose is currently being evaluated.
 
 The following figure illustrates front and rear vehicle velocity assignment.
 
 ![front rear assignment](./image/lane_change/lane_change-collision_check_parked_vehicle.png)
+
+(The sentence "lateral distance is within threshold" sounds like, the distance is smaller than the threshold, doesn't it? It can explisitly say the lateral distance is longer then the threshold.)
 
 Assuming the front vehicle brakes, then `d_front` is the distance the front vehicle will travel until it comes to a complete stop. The distance is computed from the equation of motion, which yield.
 
@@ -287,11 +296,12 @@ d_rear = v_rear * rear_vehicle_reaction_time + v_rear * rear_vehicle_safety_time
 
 Since there is no absolute value for the deceleration`a_front` and `a_rear`, both of the values are parameterized (`expected_front_deceleration` and `expected_rear_deceleration`, respectively) with the estimation of how much deceleration will occur if the brake is pressed.
 
-The longitudinal distance is evaluated as follows
+The longitudinal distance (which one?) is evaluated as follows
 
 ```C++
 d_rear < d_front + d_inter
 ```
+(...??? What does this equation represent? The safety condition? Why there is "<" here?)
 
 where `d_inter` is the relative longitudinal distance obtained at each evaluated predicted pose.
 
@@ -316,6 +326,8 @@ The following figure illustrates when the lane is blocked in multiple lane chang
 #### Intersection
 
 Lane change in the intersection is prohibited following traffic regulation. Therefore, if the goal is place close passed the intersection, the lane change needs to be completed before ego vehicle enters the intersection region. Similar to the lane blocked case, in case of the path is unsafe, ego vehicle will stop and waits for the dynamic object to pass by.
+
+(Need to mention to the crosswalk as well?)
 
 The following figure illustrate the intersection case.
 
