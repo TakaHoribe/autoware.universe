@@ -608,10 +608,18 @@ int32_t SimplePlanningSimulator::convert_to_PTCL(
 
   lanelet::GPSPoint original_position_UTM{origin_lat, origin_lon};
   lanelet::GPSPoint vehicle_position_UTM{car_lat, car_lon};
-  int32_t position_x_PTCL;
-  int32_t position_y_PTCL;
-  convert_pose_to_PTCL_coordinate(
-    original_position_UTM, vehicle_position_UTM, position_x_PTCL, position_y_PTCL);
+
+  const auto [target_UTM_x, target_UTM_y] = convert_pose_to_UTM_coordinate(vehicle_position_UTM);
+  const auto [origin_UTM_x, origin_UTM_y] = convert_pose_to_UTM_coordinate(original_position_UTM);
+
+  // debug print for latlon -> UTM conversion
+  // RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, "latlon (%.12f, %.12f) -> UTM (%.12f, %.12f)", car_lat, car_lon, target_UTM_x, target_UTM_y);
+
+  const PTCL_Coordinate position_x_PTCL = PTCL_toPTCLCoordinate(target_UTM_x - origin_UTM_x);  // converted to int
+  const PTCL_Coordinate position_y_PTCL = PTCL_toPTCLCoordinate(target_UTM_y - origin_UTM_y);  // converted to int
+
+  // TODO: How to calculate yaw? Should we use it directly, or calculate as below?
+  // const PTCL_Coordinate position_y_PTCL = std::atan2(position_y_PTCL, position_x_PTCL);
 
   const float64_t current_time = get_clock()->now().seconds();
   // RCLCPP_ERROR(this->get_logger(),"current_time %lf.\n", current_time);
@@ -722,6 +730,102 @@ void SimplePlanningSimulator::convert_pose_to_PTCL_coordinate(
     PTCL_toPTCLCoordinate(dx) * sin(rad_offset) + PTCL_toPTCLCoordinate(dy) * cos(rad_offset);
 
   return;
+}
+
+std::pair<double, double> SimplePlanningSimulator::convert_pose_to_UTM_coordinate(
+  const lanelet::GPSPoint & p_target)
+{
+  // TODO(K.Sugahara): this is from the Turbo87/UTM repository. Take right way to manage this code.
+  // https://github.com/Turbo87/utm/blob/master/utm/conversion.py#L190-L286
+
+  // parameters
+  constexpr auto K0 = 0.9996;
+
+  constexpr auto E = 0.00669438;
+  constexpr auto E2 = E * E;
+  constexpr auto E3 = E2 * E;
+  constexpr auto E_P2 = E / (1 - E);
+
+  constexpr auto M1 = (1 - E / 4 - 3 * E2 / 64 - 5 * E3 / 256);
+  constexpr auto M2 = (3 * E / 8 + 3 * E2 / 32 + 45 * E3 / 1024);
+  constexpr auto M3 = (15 * E2 / 256 + 45 * E3 / 1024);
+  constexpr auto M4 = (35 * E3 / 3072);
+
+  constexpr auto R = 6378137;
+
+  constexpr double LATLON_TO_RAD = M_PI / 180.0;
+
+  const auto zone_number_to_central_longitude = [](const auto zone_number) {
+    return (zone_number - 1) * 6 - 180 + 3;
+  };
+
+  const auto mod_angle = [](const auto value) { return std::fmod(value + M_PI, 2 * M_PI) - M_PI; };
+
+  const auto latlon_to_zone_number = [](const auto latitude, const auto longitude) {
+    if ((56 <= latitude && latitude < 64) && (3 <= longitude && longitude < 12)) return 32;
+    if ((72 <= latitude && latitude <= 84) && (longitude >= 0)) {
+      if (longitude < 9) {
+        return 31;
+      } else if (longitude < 21) {
+        return 33;
+      } else if (longitude < 33) {
+        return 35;
+      } else if (longitude < 42) {
+        return 37;
+      }
+    }
+    return static_cast<int>((longitude + 180) / 6) + 1;
+  };
+
+  const auto lat_rad = p_target.lat * LATLON_TO_RAD;
+  const auto lat_sin = std::sin(lat_rad);
+  const auto lat_cos = std::cos(lat_rad);
+
+  const auto lat_tan = lat_sin / lat_cos;
+  const auto lat_tan2 = lat_tan * lat_tan;
+  const auto lat_tan4 = lat_tan2 * lat_tan2;
+
+  const auto zone_number = latlon_to_zone_number(p_target.lat, p_target.lon);
+
+  if (zone_number != 54) {
+    throw std::runtime_error("TEMP: zone_number must be 54 in this test");
+  }
+
+  // const auto zone_letter = 'S'; // unused
+
+  const auto lon_rad = p_target.lon * LATLON_TO_RAD;
+  const auto central_lon = zone_number_to_central_longitude(zone_number);
+
+  const auto central_lon_rad = central_lon * LATLON_TO_RAD;
+
+  const auto n = R / std::sqrt(1 - E * lat_sin * lat_sin);
+  const auto c = E_P2 * lat_cos * lat_cos;
+
+  const auto a = lat_cos * mod_angle(lon_rad - central_lon_rad);
+  const auto a2 = a * a;
+  const auto a3 = a2 * a;
+  const auto a4 = a3 * a;
+  const auto a5 = a4 * a;
+  const auto a6 = a5 * a;
+
+  const auto m = R * (M1 * lat_rad -
+                      M2 * std::sin(2 * lat_rad) +
+                      M3 * std::sin(4 * lat_rad) -
+                      M4 * std::sin(6 * lat_rad));
+
+  const auto easting = K0 * n * (a +
+                      a3 / 6 * (1 - lat_tan2 + c) +
+                      a5 / 120 * (5 - 18 * lat_tan2 + lat_tan4 + 72 * c - 58 * E_P2)) + 500000;
+
+  auto northing = K0 * (m + n * lat_tan * (a2 / 2 +
+                      a4 / 24 * (5 - lat_tan2 + 9 * c + 4 * c*c) +
+                      a6 / 720 * (61 - 58 * lat_tan2 + lat_tan4 + 600 * c - 330 * E_P2)));
+
+  if (p_target.lat < 0) {
+    northing += 10000000;
+  }
+
+  return {easting, northing};
 }
 
 void SimplePlanningSimulator::publish_control_mode_report()

@@ -339,6 +339,8 @@ private:
     const lanelet::GPSPoint & point1, const lanelet::GPSPoint & point2, int32_t & position_x_PTCL,
     int32_t & potion_y_PTCL);
 
+  std::pair<double, double> convert_pose_to_UTM_coordinate(const lanelet::GPSPoint & p);
+
   /**
    * @brief publish acceleration
    */
