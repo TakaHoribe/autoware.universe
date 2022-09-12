@@ -591,19 +591,15 @@ int32_t SimplePlanningSimulator::convert_to_PTCL(
   mgrs_point.z() = odometry.pose.pose.position.z;
   projector.setMGRSCode("54SUE");
   lanelet::GPSPoint gps_point = projector.reverse(mgrs_point);
-  // virtual_map
-  // double origin_lat = 35.68386482855;
-  // double origin_lon = 139.68506426425;
-  // odaiba
-  double origin_lat = 35.61458614188;
-  double origin_lon = 139.76947350053;
+  double origin_lat = 35.68386482855;
+  double origin_lon = 139.68506426425;
   double car_lat = round(gps_point.lat * 1e8) / 1e8;
   // double car_lat = gps_point.lat;
   double car_lon = round(gps_point.lon * 1e8) / 1e8;
   // double car_lon = gps_point.lon;
   // RCLCPP_ERROR(this->get_logger(),"pose_mgrs_x %lf.\n", mgrs_point.x());
-  // RCLCPP_ERROR(this->get_logger(), "pose_lat %lf.\n", car_lat);
-  // RCLCPP_ERROR(this->get_logger(), "pose_lon %lf.\n", car_lon);
+  RCLCPP_ERROR(this->get_logger(),"pose_lat %lf.\n", car_lat);
+  RCLCPP_ERROR(this->get_logger(),"pose_lon %lf.\n", car_lon);
   // RCLCPP_ERROR(this->get_logger(),"pose_mgrs_looped_x %lf.\n", looped_mgrs_point.x());
 
   lanelet::GPSPoint original_position_UTM{origin_lat, origin_lon};
@@ -613,6 +609,7 @@ int32_t SimplePlanningSimulator::convert_to_PTCL(
   convert_pose_to_PTCL_coordinate(
     original_position_UTM, vehicle_position_UTM, position_x_PTCL, position_y_PTCL);
 
+  [[maybe_unused]] uint8_t numSemiTrailers;
   const float64_t current_time = get_clock()->now().seconds();
   // RCLCPP_ERROR(this->get_logger(),"current_time %lf.\n", current_time);
   CarState.header.measurementTime = PTCL_toPTCLTime(current_time);
@@ -705,21 +702,18 @@ void SimplePlanningSimulator::convert_pose_to_PTCL_coordinate(
   const double LATLON_TO_RAD = M_PI / 180.0;
   const double rlat_orig = p_origin.lat * LATLON_TO_RAD;
   const double rlon_orig = p_origin.lon * LATLON_TO_RAD;
-  const double rlat_target = p_target.lat * LATLON_TO_RAD;
-  const double rlon_target = p_target.lon * LATLON_TO_RAD;
+  const double rlat_target = 35.688207 * LATLON_TO_RAD;
+  const double rlon_target = 139.692481 * LATLON_TO_RAD;
 
-  const double EARTH_RADIUS = 6378140;
+  // const double EARTH_RADIUS = 6378140;
+  const double EARTH_RADIUS = 6378000;
 
   const double rlat_c = (rlat_orig + rlat_target) / 2;  // latitude center
   const double dx = EARTH_RADIUS * (rlon_target - rlon_orig) * cos(rlat_c);
   const double dy = EARTH_RADIUS * (rlat_target - rlat_orig);
 
-  // double rad_offset = -0.9 * LATLON_TO_RAD; // offset for virtual map
-  double rad_offset = 0 * LATLON_TO_RAD;
-  position_x_PTCL =
-    PTCL_toPTCLCoordinate(dx) * cos(rad_offset) - PTCL_toPTCLCoordinate(dy) * sin(rad_offset);
-  position_y_PTCL =
-    PTCL_toPTCLCoordinate(dx) * sin(rad_offset) + PTCL_toPTCLCoordinate(dy) * cos(rad_offset);
+  position_x_PTCL = PTCL_toPTCLCoordinate(dx);
+  position_y_PTCL = PTCL_toPTCLCoordinate(dy);
 
   return;
 }

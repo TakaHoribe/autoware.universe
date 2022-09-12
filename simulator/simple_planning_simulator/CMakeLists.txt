@@ -17,7 +17,10 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/simple_planning_simulator/vehicle_model/sim_model_delay_steer_acc.cpp
   src/simple_planning_simulator/vehicle_model/sim_model_delay_steer_acc_geared.cpp
 )
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${tf2_INCLUDE_DIRS})
+
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/../../../../vendor/ptcl/include)
+target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/../../../../../build/PTCL)
+target_link_libraries(${PROJECT_NAME} libptclUdpPort.a libptclFilePort.a libptclFilePortUtils.a libptclUtils.a libptclMutex.a libptcl.a libcrc32.a libcobs.a)
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-old-style-cast) # RCLCPP_ERROR_THROTTLE() has built-in old-style casts.
 
@@ -33,9 +36,14 @@ if(BUILD_TESTING)
     TIMEOUT 120
   )
 
+
   target_link_libraries(test_simple_planning_simulator
     ${PROJECT_NAME}
   )
+  
 endif()
+
+
+
 
 ament_auto_package(INSTALL_TO_SHARE param launch)

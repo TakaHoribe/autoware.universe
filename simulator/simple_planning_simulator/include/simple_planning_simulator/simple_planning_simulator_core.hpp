@@ -1,6 +1,6 @@
 // Copyright 2021 The Autoware Foundation.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Apache License, Version 2.0 (the "LicenseW");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -38,6 +38,13 @@
 #include "geometry_msgs/msg/accel_with_covariance_stamped.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+// #include "ptcl/ports/ptcl_port_udp.h"
+// // #include "ptcl/ptcl/ptcl.h"
+#include "lanelet2_core/primitives/GPSPoint.h"
+#include "ptcl/ports/ptcl_port_udp.h"
+#include "ptcl/ptcl.h"
+#include "ptcl/utils/si_ptcl_unit_conversion.h"
+
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -203,6 +210,13 @@ private:
   } vehicle_model_type_;  //!< @brief vehicle model type to decide the model dynamics
   std::shared_ptr<SimModelInterface> vehicle_model_ptr_;  //!< @brief vehicle model pointer
 
+  // Struct to store received message data and set flag in callback.
+  typedef struct CarStateData
+  {
+    PTCL_CarState msg;
+    volatile bool msgReceived;
+  } CarStateData;
+
   /**
    * @brief set current_vehicle_cmd_ptr_ with received message
    */
@@ -317,6 +331,13 @@ private:
    * @param [in] steer The steering to publish
    */
   void publish_steering(const SteeringReport & steer);
+
+  int32_t convert_to_PTCL(
+    const Odometry & odometry, const VelocityReport & velocity, const SteeringReport & steer);
+
+  void convert_pose_to_PTCL_coordinate(
+    const lanelet::GPSPoint & point1, const lanelet::GPSPoint & point2, int32_t & position_x_PTCL,
+    int32_t & potion_y_PTCL);
 
   /**
    * @brief publish acceleration
