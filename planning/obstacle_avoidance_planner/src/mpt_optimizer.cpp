@@ -393,7 +393,8 @@ std::vector<ReferencePoint> MPTOptimizer::getReferencePoints(
     calcCurvature(ref_points);
     calcArcLength(ref_points);
     calcPlanningFromEgo(
-      ref_points);  // NOTE: fix_kinematic_state will be updated when planning from ego
+      ref_points, prev_trajs);  // NOTE: fix_kinematic_state will be updated when planning from ego
+
 
     // crop trajectory with margin to calculate vehicle bounds at the end point
     constexpr double tmp_ref_points_margin = 20.0;
@@ -431,15 +432,35 @@ std::vector<ReferencePoint> MPTOptimizer::getReferencePoints(
   return ref_points;
 }
 
-void MPTOptimizer::calcPlanningFromEgo(std::vector<ReferencePoint> & ref_points) const
+void MPTOptimizer::calcPlanningFromEgo(
+  std::vector<ReferencePoint> & ref_points,
+  const std::unique_ptr<Trajectories> & prev_traj) const
 {
   // if plan from ego
   constexpr double epsilon = 1e-04;
   const double trajectory_length = motion_utils::calcArcLength(ref_points);
+  constexpr double lateral_error_distance_threhold = 0.5;
+  const bool has_large_deviation =
+    prev_traj ? std::abs(motion_utils::calcLateralOffset(prev_traj->model_predictive_trajectory, current_ego_pose_.position)) >
+                  lateral_error_distance_threhold
+              : false;
+  const bool is_vehicle_stopped = std::abs(current_ego_vel_) < epsilon;
 
-  const bool plan_from_ego = mpt_param_.plan_from_ego && std::abs(current_ego_vel_) < epsilon &&
-                             ref_points.size() > 1 &&
-                             trajectory_length < mpt_param_.max_plan_from_ego_length;
+  const bool is_plan_from_ego_available = mpt_param_.plan_from_ego && ref_points.size() > 1 &&
+                                          trajectory_length < mpt_param_.max_plan_from_ego_length;
+
+  const bool plan_from_ego = (is_vehicle_stopped || has_large_deviation) && is_plan_from_ego_available;
+
+  std::cerr << "plan_from_ego = " << std::string(plan_from_ego ? "True" : "False")
+            << ", mpt_param_.plan_from_ego = " << mpt_param_.plan_from_ego
+            << ", ref_points.size() > 1 = " << (ref_points.size() > 1)
+            << ", trajectory_length < mpt_param_.max_plan_from_ego_length = "
+            << (trajectory_length < mpt_param_.max_plan_from_ego_length)
+            << ", trajectory_length = " << trajectory_length
+            << ", max_plan_from_ego_length = " << mpt_param_.max_plan_from_ego_length
+            << ", is_vehicle_stopped = " << is_vehicle_stopped
+            << ", has_large_deviation = " << has_large_deviation << std::endl;
+
   if (plan_from_ego) {
     for (auto & ref_point : ref_points) {
       ref_point.fix_kinematic_state = boost::none;

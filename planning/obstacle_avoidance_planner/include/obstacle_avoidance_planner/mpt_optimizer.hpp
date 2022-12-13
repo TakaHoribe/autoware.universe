@@ -204,7 +204,9 @@ private:
     const std::unique_ptr<Trajectories> & prev_mpt_points, const bool enable_avoidance,
     const CVMaps & maps, DebugData & debug_data) const;
 
-  void calcPlanningFromEgo(std::vector<ReferencePoint> & ref_points) const;
+  void calcPlanningFromEgo(
+    std::vector<ReferencePoint> & ref_points,
+    const std::unique_ptr<Trajectories> & prev_traj) const;
 
   /*
   std::vector<ReferencePoint> convertToReferencePoints(
