@@ -30,9 +30,11 @@ namespace control
 {
 namespace trajectory_follower
 {
-void SmoothStop::init(const double pred_vel_in_target, const double pred_stop_dist)
+void SmoothStop::init(const double pred_vel_in_target, const double pred_stop_dist, const double current_vel)
 {
+  m_start_velocity = current_vel;
   m_weak_acc_time = rclcpp::Clock{RCL_ROS_TIME}.now();
+  m_start_time = rclcpp::Clock{RCL_ROS_TIME}.now();
 
   // when distance to stopline is near the car
   if (pred_stop_dist < std::numeric_limits<double>::epsilon()) {

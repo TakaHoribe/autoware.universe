@@ -57,6 +57,8 @@ MotionVelocitySmootherNode::MotionVelocitySmootherNode(const rclcpp::NodeOptions
         create_publisher<Trajectory>("~/debug/backward_filtered_trajectory", 1);
       pub_merged_filtered_trajectory_ =
         create_publisher<Trajectory>("~/debug/merged_filtered_trajectory", 1);
+      pub_pre_optimized_trajectory_ =
+        create_publisher<Trajectory>("~/debug/pre_optimized_trajectory", 1);
       pub_closest_merged_velocity_ =
         create_publisher<Float32Stamped>("~/closest_merged_velocity", 1);
       break;

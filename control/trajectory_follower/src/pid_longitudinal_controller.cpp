@@ -547,7 +547,7 @@ void PidLongitudinalController::updateControlState(const ControlData & control_d
         const double pred_stop_dist =
           control_data.stop_dist -
           0.5 * (pred_vel_in_target + current_vel) * m_delay_compensation_time;
-        m_smooth_stop.init(pred_vel_in_target, pred_stop_dist);
+        m_smooth_stop.init(pred_vel_in_target, pred_stop_dist, current_vel);
         return changeState(ControlState::STOPPING);
       }
     } else {

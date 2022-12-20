@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="planning_debug_tools" exec="stop_distance_calculator_exe" name="stop_distance_calculator" output="screen">
+    <remap from="input/trajectory" to="/planning/scenario_planning/scenario_selector/trajectory" />
+  </node>
+</launch>

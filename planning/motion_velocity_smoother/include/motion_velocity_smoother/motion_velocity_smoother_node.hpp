@@ -235,6 +235,7 @@ private:
   rclcpp::Publisher<Trajectory>::SharedPtr pub_forward_filtered_trajectory_;
   rclcpp::Publisher<Trajectory>::SharedPtr pub_backward_filtered_trajectory_;
   rclcpp::Publisher<Trajectory>::SharedPtr pub_merged_filtered_trajectory_;
+  rclcpp::Publisher<Trajectory>::SharedPtr pub_pre_optimized_trajectory_;
   rclcpp::Publisher<Float32Stamped>::SharedPtr pub_closest_merged_velocity_;
 
   // helper functions

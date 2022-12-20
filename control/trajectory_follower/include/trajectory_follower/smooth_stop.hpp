@@ -46,7 +46,7 @@ public:
    * @param [in] pred_vel_in_target predicted ego velocity when the stop command will be executed
    * @param [in] pred_stop_dist predicted stop distance when the stop command will be executed
    */
-  void init(const double pred_vel_in_target, const double pred_stop_dist);
+  void init(const double pred_vel_in_target, const double pred_stop_dist, const double current_vel);
 
   /**
    * @brief set the parameters of this smooth stop
@@ -115,7 +115,10 @@ private:
 
   double m_strong_acc;
   rclcpp::Time m_weak_acc_time;
+  rclcpp::Time m_start_time;
   bool m_is_set_params = false;
+
+  double m_start_velocity;
 };
 }  // namespace trajectory_follower
 }  // namespace control

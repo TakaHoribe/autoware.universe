@@ -40,7 +40,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-PLOT_MIN_ARCLENGTH = -5
+PLOT_MIN_ARCLENGTH = -0.2
 
 if args.length is None:
     PLOT_MAX_ARCLENGTH = 200
@@ -104,6 +104,15 @@ class TrajectoryVisualizer(Node):
         self.obstacle_avoid_traj = Trajectory()
         self.obstacle_stop_traj = Trajectory()
 
+        self.trajectory_jerk_forward = Trajectory()
+        self.trajectory_jerk_backward = Trajectory()
+        self.trajectory_jerk_merged = Trajectory()
+        self.trajectory_jerk_pre_optimized = Trajectory()
+        self.update_jerk_forward = False
+        self.update_jerk_backward = False
+        self.update_jerk_merged = False
+        self.update_jerk_pre_optimized = False
+
         self.plotted = [False] * 9
         self.sub_localization_kinematics = self.create_subscription(
             Odometry, "/localization/kinematic_state", self.CallbackLocalizationTwist, 1
@@ -134,6 +143,18 @@ class TrajectoryVisualizer(Node):
         self.sub5 = message_filters.Subscriber(
             self, Trajectory, "/planning/scenario_planning/trajectory"
         )
+        self.sub_smoother_debug_1 = message_filters.Subscriber(
+            self, Trajectory, optimizer_debug + "backward_filtered_trajectory"
+        )
+        self.sub_smoother_debug_2 = message_filters.Subscriber(
+            self, Trajectory, optimizer_debug + "forward_filtered_trajectory"
+        )
+        self.sub_smoother_debug_3 = message_filters.Subscriber(
+            self, Trajectory, optimizer_debug + "merged_filtered_trajectory"
+        )
+        self.sub_smoother_debug_4 = message_filters.Subscriber(
+            self, Trajectory, optimizer_debug + "pre_optimized_trajectory"
+        )
 
         lane_driving = "/planning/scenario_planning/lane_driving"
         self.sub6 = message_filters.Subscriber(
@@ -156,6 +177,11 @@ class TrajectoryVisualizer(Node):
             [self.sub5, self.sub6, self.sub7, self.sub8, self.sub9], 30, 1, 0
         )
         self.ts2.registerCallback(self.CallBackLaneDrivingTraj)
+
+        self.ts3 = message_filters.ApproximateTimeSynchronizer(
+            [self.sub_smoother_debug_1, self.sub_smoother_debug_2, self.sub_smoother_debug_3, self.sub_smoother_debug_4], 30, 1, 0
+        )
+        self.ts3.registerCallback(self.CallBackSmootherJerkFilterDebug)
 
         # main process
         if PLOT_TYPE == "VEL_ACC_JERK":
@@ -240,6 +266,13 @@ class TrajectoryVisualizer(Node):
         self.obstacle_stop_traj = cmd
         self.update_traj_ob_stop = True
 
+    def updatePlot(self, flag, traj, im):
+        if flag is True:
+            x = self.CalcArcLength(traj)
+            y = self.ToVelList(traj)
+            im.set_data(x, y)
+            flag = False
+
     def setPlotTrajectoryVelocity(self):
         self.ax1 = plt.subplot(1, 1, 1)  # row, col, index(<raw*col)
         (self.im1,) = self.ax1.plot([], [], label="0: behavior_path_planner_path", marker="")
@@ -282,6 +315,10 @@ class TrajectoryVisualizer(Node):
             self.im7,
             self.im71,
             self.im8,
+            self.im81,
+            self.im82,
+            self.im83,
+            self.im84,
             self.im9,
             self.im10,
             self.im11,
@@ -302,6 +339,10 @@ class TrajectoryVisualizer(Node):
                 self.im7,
                 self.im71,
                 self.im8,
+                self.im81,
+                self.im82,
+                self.im83,
+                self.im84,
                 self.im9,
                 self.im10,
                 self.im11,
@@ -320,6 +361,11 @@ class TrajectoryVisualizer(Node):
         trajectory_steer_rate_filtered = self.trajectory_steer_rate_filtered
         trajectory_time_resampled = self.trajectory_time_resampled
         trajectory_final = self.trajectory_final
+
+        trajectory_jerk_forward = self.trajectory_jerk_forward
+        trajectory_jerk_backward = self.trajectory_jerk_backward
+        trajectory_jerk_merged = self.trajectory_jerk_merged
+        trajectory_jerk_pre_optimized = self.trajectory_jerk_pre_optimized
 
         if self.update_behavior_path_planner_path:
             x = self.CalcArcLengthPathWLid(behavior_path_planner_path)
@@ -378,6 +424,40 @@ class TrajectoryVisualizer(Node):
             self.im8.set_data(x, y)
             self.update_traj_resample = False
 
+        # self.updatePlot(self.update_jerk_forward, , self.im81)
+        # self.updatePlot(self., , self.im82)
+        # self.updatePlot(self., , self.im83)
+        # self.updatePlot(self., , self.im84)
+
+        if self.update_jerk_forward:
+            x = self.CalcArcLength(trajectory_jerk_forward)
+            y = self.ToVelList(trajectory_jerk_forward)
+            self.im81.set_data(x, y)
+            self.update_jerk_forward = False
+
+        if self.update_jerk_backward:
+            x = self.CalcArcLength(trajectory_jerk_backward)
+            y = self.ToVelList(trajectory_jerk_backward)
+            self.im82.set_data(x, y)
+            self.update_jerk_backward = False
+
+        if self.update_jerk_merged:
+            x = self.CalcArcLength(trajectory_jerk_merged)
+            y = self.ToVelList(trajectory_jerk_merged)
+            self.im83.set_data(x, y)
+            self.update_jerk_merged = False
+
+        if self.update_jerk_pre_optimized:
+            x = self.CalcArcLength(trajectory_jerk_pre_optimized)
+            y = self.ToVelList(trajectory_jerk_pre_optimized)
+            self.im84.set_data(x, y)
+            self.update_jerk_pre_optimized = False
+
+
+
+
+
+
         if self.update_traj_final:
             x = self.CalcArcLength(trajectory_final)
             y = self.ToVelList(trajectory_final)
@@ -393,7 +473,7 @@ class TrajectoryVisualizer(Node):
                 self.im12.set_data(x, y)
 
         # change y-range
-        self.ax1.set_ylim([self.min_vel - 1.0, self.max_vel + 1.0])
+        self.ax1.set_ylim([-0.1, 1.0])
 
         return (
             self.im1,
@@ -405,6 +485,10 @@ class TrajectoryVisualizer(Node):
             self.im7,
             self.im71,
             self.im8,
+            self.im81,
+            self.im82,
+            self.im83,
+            self.im84,
             self.im9,
             self.im10,
             self.im11,
@@ -609,7 +693,7 @@ class TrajectoryVisualizer(Node):
                 self.max_vel = max(10.0, np.max(y))
                 self.min_vel = np.min(y)
                 # change y-range
-                self.ax1.set_ylim([self.min_vel - 1.0, self.max_vel + 1.0])
+                self.ax1.set_ylim([-0.1, 1.0])
 
         if self.update_traj_resample:
             x = self.CalcArcLength(trajectory_time_resampled)

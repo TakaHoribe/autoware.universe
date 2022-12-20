@@ -66,10 +66,11 @@ bool JerkFilteredSmoother::apply(
     // No need to do optimization
     output.front().longitudinal_velocity_mps = v0;
     output.front().acceleration_mps2 = a0;
-    debug_trajectories.resize(3);
+    debug_trajectories.resize(4);
     debug_trajectories[0] = output;
     debug_trajectories[1] = output;
     debug_trajectories[2] = output;
+    debug_trajectories[3] = output;
     return true;
   }
 
@@ -122,6 +123,7 @@ bool JerkFilteredSmoother::apply(
     debug_trajectories[0] = output;
     debug_trajectories[1] = output;
     debug_trajectories[2] = output;
+    debug_trajectories[3] = output;
     return true;
   }
 
