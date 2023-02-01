@@ -2335,12 +2335,14 @@ bool hasEnoughDistance(
   const BehaviorPathPlannerParameters & param, const double front_decel, const double rear_decel,
   CollisionCheckDebug & debug)
 {
+  std::cerr << "hasEnoughDistance(): called " << std::endl;
   const auto front_vehicle_pose =
     projectCurrentPoseToTarget(expected_ego_pose, expected_object_pose);
   debug.relative_to_ego = front_vehicle_pose;
 
   if (isLateralDistanceEnough(
         front_vehicle_pose.position.y, param.lateral_distance_max_threshold)) {
+    std::cerr << "hasEnoughDistance(): isLateralDistanceEnough is true. return true. " << std::endl;
     return true;
   }
 
@@ -2363,7 +2365,14 @@ bool hasEnoughDistance(
       param.rear_vehicle_safety_time_margin),
     param.longitudinal_distance_min_threshold);
 
-  return isLongitudinalDistanceEnough(rear_vehicle_stop_threshold, front_vehicle_stop_threshold);
+  const auto is_longitudinal_ok = isLongitudinalDistanceEnough(rear_vehicle_stop_threshold, front_vehicle_stop_threshold);
+  std::cerr << "hasEnoughDistance(): is_longitudinal_ok = " << std::string(is_longitudinal_ok ? "True" : "False")
+            << ", is_obj_in_front = " << std::string(is_obj_in_front ? "True" : "False")
+            << ", front_vehicle_velocity = " << util::l2Norm(front_vehicle_velocity)
+            << ", rear_vehicle_velocity = " << util::l2Norm(rear_vehicle_velocity)
+            << ", front_vehicle_stop_threshold = " << front_vehicle_stop_threshold
+            << ", rear_vehicle_stop_threshold = " << rear_vehicle_stop_threshold << std::endl;
+  return is_longitudinal_ok;
 }
 
 bool isLateralDistanceEnough(
@@ -2380,6 +2389,7 @@ bool isSafeInLaneletCollisionCheck(
   const BehaviorPathPlannerParameters & common_parameters, const double front_decel,
   const double rear_decel, Pose & ego_pose_before_collision, CollisionCheckDebug & debug)
 {
+  std::cerr << "isSafeInLaneletCollisionCheck(): called. t = [" << check_start_time << " ~ " << check_end_time << "]" << std::endl;
   const auto lerp_path_reserve = (check_end_time - check_start_time) / check_time_resolution;
   if (lerp_path_reserve > 1e-3) {
     debug.lerped_path.reserve(static_cast<size_t>(lerp_path_reserve));
@@ -2388,6 +2398,7 @@ bool isSafeInLaneletCollisionCheck(
   Pose expected_obj_pose = target_object.kinematics.initial_pose_with_covariance.pose;
   Pose expected_ego_pose = ego_current_pose;
   for (double t = check_start_time; t < check_end_time; t += check_time_resolution) {
+    std::cerr << "isSafeInLaneletCollisionCheck(): t = " << t << ", " << std::endl;
     tier4_autoware_utils::Polygon2d obj_polygon;
     [[maybe_unused]] const auto get_obj_info = util::getObjectExpectedPoseAndConvertToPolygon(
       target_object_path, target_object, obj_polygon, t, expected_obj_pose, debug.failed_reason);
@@ -2400,6 +2411,7 @@ bool isSafeInLaneletCollisionCheck(
     debug.ego_polygon = ego_polygon;
     debug.obj_polygon = obj_polygon;
     if (boost::geometry::overlaps(ego_polygon, obj_polygon)) {
+      std::cerr << "isSafeInLaneletCollisionCheck(): overlap_polygon. return false. " << std::endl;
       debug.failed_reason = "overlap_polygon";
       return false;
     }
@@ -2416,8 +2428,11 @@ bool isSafeInLaneletCollisionCheck(
           expected_ego_pose, ego_current_twist, expected_obj_pose, object_twist, common_parameters,
           front_decel, rear_decel, debug)) {
       debug.failed_reason = "not_enough_longitudinal";
+      std::cerr << "isSafeInLaneletCollisionCheck(): is does not hasEnoughDistance. return false. " << std::endl;
       return false;
     }
+    std::cerr << "isSafeInLaneletCollisionCheck(): this time is safe (t=  " << t << ") " << std::endl;
+
     ego_pose_before_collision = expected_ego_pose;
   }
   return true;

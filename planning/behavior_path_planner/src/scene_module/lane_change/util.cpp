@@ -423,12 +423,15 @@ bool selectSafePath(
   const LaneChangeParameters & ros_parameters, LaneChangePath * selected_path,
   std::unordered_map<std::string, CollisionCheckDebug> & debug_data)
 {
+  std::cerr << "\n\n\nselectSafePath(): called. checked path size = " << paths.size() << std::endl;
   debug_data.clear();
+  int num = 0;
   for (const auto & path : paths) {
     const size_t current_seg_idx = motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
       path.path.points, current_pose, common_parameters.ego_nearest_dist_threshold,
       common_parameters.ego_nearest_yaw_threshold);
     Pose ego_pose_before_collision;
+    std::cerr << "selectSafePath(): path no." << num++ << std::endl;
     if (isLaneChangePathSafe(
           path, current_lanes, target_lanes, dynamic_objects, current_pose, current_seg_idx,
           current_twist, common_parameters, ros_parameters,
@@ -496,6 +499,7 @@ bool isLaneChangePathSafe(
   std::unordered_map<std::string, CollisionCheckDebug> & debug_data, const bool use_buffer,
   const double acceleration)
 {
+  std::cerr << "isLaneChangePathSafe(): called." << std::endl;
   if (dynamic_objects == nullptr) {
     return true;
   }
@@ -601,7 +605,11 @@ bool isLaneChangePathSafe(
                                      (object_speed > prepare_phase_ignore_target_speed_thresh))
                                       ? 0.0
                                       : lane_change_prepare_duration;
+    
+    std::cerr << "isLaneChangePathSafe(): is_object_in_target: " << is_object_in_target << ", obj vel = " << object_speed << std::endl;
+    
     if (is_object_in_target) {
+      std::cerr << "isLaneChangePathSafe(): calling isSafeInLaneletCollisionCheck. predicted_paths size = " << predicted_paths.size() << std::endl;
       for (const auto & obj_path : predicted_paths) {
         if (!util::isSafeInLaneletCollisionCheck(
               current_pose, current_twist, vehicle_predicted_path, vehicle_info, check_start_time,
@@ -612,6 +620,7 @@ bool isLaneChangePathSafe(
         }
       }
     } else {
+      std::cerr << "isLaneChangePathSafe(): calling isSafeInFreeSpaceCollisionCheck. " << std::endl;
       if (!util::isSafeInFreeSpaceCollisionCheck(
             current_pose, current_twist, vehicle_predicted_path, vehicle_info, check_start_time,
             check_end_time, time_resolution, obj, common_parameters, front_decel, rear_decel,
