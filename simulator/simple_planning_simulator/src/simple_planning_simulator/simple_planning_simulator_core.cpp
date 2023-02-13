@@ -309,6 +309,7 @@ void SimplePlanningSimulator::on_timer()
 void SimplePlanningSimulator::on_initialpose(const PoseWithCovarianceStamped::ConstSharedPtr msg)
 {
   // save initial pose
+  RCLCPP_INFO(get_logger(), "on_initialpose is called.");
   Twist initial_twist;
   PoseStamped initial_pose;
   initial_pose.header = msg->header;
@@ -321,6 +322,7 @@ void SimplePlanningSimulator::on_initialpose(const PoseWithCovarianceStamped::Co
 void SimplePlanningSimulator::on_initialtwist(const TwistStamped::ConstSharedPtr msg)
 {
   if (!initial_pose_) return;
+  RCLCPP_INFO(get_logger(), "on_initialtwist is called.");
 
   PoseStamped initial_pose;
   initial_pose.header = initial_pose_->header;
@@ -334,6 +336,7 @@ void SimplePlanningSimulator::on_set_pose(
   const InitializePose::Response::SharedPtr response)
 {
   // save initial pose
+  RCLCPP_INFO(get_logger(), "on_set_pose is called.");
   Twist initial_twist;
   PoseStamped initial_pose;
   initial_pose.header = request->pose.header;
