@@ -55,6 +55,9 @@
 #include <string>
 #include <vector>
 
+#include "tier4_debug_msgs/msg/bool_stamped.hpp"
+
+
 namespace simulation
 {
 namespace simple_planning_simulator
@@ -134,6 +137,7 @@ private:
   rclcpp::Publisher<TurnIndicatorsReport>::SharedPtr pub_turn_indicators_report_;
   rclcpp::Publisher<HazardLightsReport>::SharedPtr pub_hazard_lights_report_;
   rclcpp::Publisher<tf2_msgs::msg::TFMessage>::SharedPtr pub_tf_;
+  rclcpp::Publisher<tf2_msgs::msg::TFMessage>::SharedPtr pub_tf_pseudo_;
   rclcpp::Publisher<PoseStamped>::SharedPtr pub_current_pose_;
 
   rclcpp::Subscription<GearCommand>::SharedPtr sub_gear_cmd_;
@@ -147,6 +151,9 @@ private:
   rclcpp::Subscription<TwistStamped>::SharedPtr sub_init_twist_;
   rclcpp::Subscription<Trajectory>::SharedPtr sub_trajectory_;
   rclcpp::Subscription<Engage>::SharedPtr sub_engage_;
+  rclcpp::Subscription<tier4_debug_msgs::msg::BoolStamped>::SharedPtr sub_drive_backward_;
+  bool drive_backward_ = false;
+  double wheelbase_ = 0.0;
 
   rclcpp::Service<ControlModeCommand>::SharedPtr srv_mode_req_;
 

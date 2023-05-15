@@ -110,6 +110,12 @@ SimplePlanningSimulator::SimplePlanningSimulator(const rclcpp::NodeOptions & opt
   sub_trajectory_ = create_subscription<Trajectory>(
     "input/trajectory", QoS{1}, std::bind(&SimplePlanningSimulator::on_trajectory, this, _1));
 
+  sub_drive_backward_ = create_subscription<tier4_debug_msgs::msg::BoolStamped>(
+    "/drive_backward", QoS{1}, [this](const tier4_debug_msgs::msg::BoolStamped::SharedPtr msg) {
+      drive_backward_ = msg->data;
+    });
+
+
   srv_mode_req_ = create_service<ControlModeCommand>(
     "input/control_mode_request",
     std::bind(&SimplePlanningSimulator::on_control_mode_request, this, _1, _2));
@@ -132,6 +138,7 @@ SimplePlanningSimulator::SimplePlanningSimulator(const rclcpp::NodeOptions & opt
   pub_acc_ = create_publisher<AccelWithCovarianceStamped>("output/acceleration", QoS{1});
   pub_imu_ = create_publisher<Imu>("output/imu", QoS{1});
   pub_tf_ = create_publisher<tf2_msgs::msg::TFMessage>("/tf", QoS{1});
+  pub_tf_pseudo_ = create_publisher<tf2_msgs::msg::TFMessage>("/tf", QoS{1});
 
   /* set param callback */
   set_param_res_ = this->add_on_set_parameters_callback(
@@ -203,6 +210,7 @@ void SimplePlanningSimulator::initialize_vehicle_model()
   const double steer_time_constant = declare_parameter("steer_time_constant", 0.27);
   const auto vehicle_info = vehicle_info_util::VehicleInfoUtil(*this).getVehicleInfo();
   const double wheelbase = vehicle_info.wheel_base_m;
+  wheelbase_ = wheelbase;
 
   if (vehicle_model_type_str == "IDEAL_STEER_VEL") {
     vehicle_model_type_ = VehicleModelType::IDEAL_STEER_VEL;
@@ -346,9 +354,9 @@ void SimplePlanningSimulator::on_set_pose(
 
 void SimplePlanningSimulator::set_input(const AckermannControlCommand & cmd)
 {
-  const auto steer = cmd.lateral.steering_tire_angle;
-  const auto vel = cmd.longitudinal.speed;
-  const auto accel = cmd.longitudinal.acceleration;
+  auto steer = cmd.lateral.steering_tire_angle;
+  auto vel = cmd.longitudinal.speed;
+  auto accel = cmd.longitudinal.acceleration;
 
   using autoware_auto_vehicle_msgs::msg::GearCommand;
   Eigen::VectorXd input(vehicle_model_ptr_->getDimU());
@@ -374,6 +382,11 @@ void SimplePlanningSimulator::set_input(const AckermannControlCommand & cmd)
   } else if (  // NOLINT
     vehicle_model_type_ == VehicleModelType::IDEAL_STEER_ACC_GEARED ||
     vehicle_model_type_ == VehicleModelType::DELAY_STEER_ACC_GEARED) {
+    if (drive_backward_)
+   {
+    acc = -acc;
+    // steer = -steer;
+   }
     input << acc, steer;
   }
   vehicle_model_ptr_->setInput(input);
@@ -537,6 +550,15 @@ void SimplePlanningSimulator::publish_odometry(const Odometry & odometry)
   msg.header.frame_id = origin_frame_id_;
   msg.header.stamp = get_clock()->now();
   msg.child_frame_id = simulated_frame_id_;
+
+  if (drive_backward_)
+   {
+    const auto yaw = tf2::getYaw(msg.pose.pose.orientation);
+    msg.pose.pose.position.x += wheelbase_ * std::cos(yaw);
+    msg.pose.pose.position.y += wheelbase_ * std::sin(yaw);
+    msg.pose.pose.orientation = tier4_autoware_utils::createQuaternionFromYaw(yaw + M_PI);
+   } 
+
   pub_odom_->publish(msg);
 }
 
@@ -629,7 +651,7 @@ void SimplePlanningSimulator::publish_tf(const Odometry & odometry)
   TransformStamped tf;
   tf.header.stamp = get_clock()->now();
   tf.header.frame_id = origin_frame_id_;
-  tf.child_frame_id = simulated_frame_id_;
+  tf.child_frame_id = "base_link_pseudo";
   tf.transform.translation.x = odometry.pose.pose.position.x;
   tf.transform.translation.y = odometry.pose.pose.position.y;
   tf.transform.translation.z = odometry.pose.pose.position.z;
@@ -637,6 +659,20 @@ void SimplePlanningSimulator::publish_tf(const Odometry & odometry)
 
   tf2_msgs::msg::TFMessage tf_msg{};
   tf_msg.transforms.emplace_back(std::move(tf));
+  
+  tf2_msgs::msg::TFMessage tf_msg_pseudo = tf_msg;
+  pub_tf_pseudo_->publish(tf_msg_pseudo);
+  
+
+  // base_link
+  tf_msg.transforms.at(0).child_frame_id = simulated_frame_id_;
+  if (drive_backward_)
+   {
+    const auto yaw = tf2::getYaw(tf_msg.transforms.front().transform.rotation);
+    tf_msg.transforms.front().transform.translation.x += wheelbase_ * std::cos(yaw);
+    tf_msg.transforms.front().transform.translation.y += wheelbase_ * std::sin(yaw);
+    tf_msg.transforms.front().transform.rotation = tier4_autoware_utils::createQuaternionFromYaw(yaw + M_PI);
+   } 
   pub_tf_->publish(tf_msg);
 }
 }  // namespace simple_planning_simulator
